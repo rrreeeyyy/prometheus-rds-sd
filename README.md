@@ -5,7 +5,7 @@ Generate [`file_sd`](https://prometheus.io/docs/prometheus/latest/configuration/
 ## Usage
 
 ```
-./prometheus-rds-sd --output.file=/path/to/rds_sd.json --refresh.interval=60
+./prometheus-rds-sd --output.file=/path/to/rds_sd.json --refresh.interval=120
 ```
 
 ## Metadata
