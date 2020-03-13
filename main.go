@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	sdName = "rdsSd"
+	sdName = "RDSSD"
 )
 
 var (
