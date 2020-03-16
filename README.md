@@ -5,7 +5,13 @@ Generate [`file_sd`](https://prometheus.io/docs/prometheus/latest/configuration/
 ## Usage
 
 ```
-./prometheus-rds-sd --output.file=/path/to/rds_sd.json --refresh.interval=120
+./prometheus-rds-sd --output.file=/path/to/rds_sd.json --refresh.interval=120 --filters=Name=NAME,Values=VALUES
+```
+
+ex.) Generate mysql-compatible RDSs `file_sd` with filter.
+
+```
+./prometheus-rds-sd --output.file=/path/to/rds_sd.json --filters=Name=engine,Values=aurora-mysql,aurora,mysql
 ```
 
 ## Metadata

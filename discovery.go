@@ -31,6 +31,7 @@ const (
 type discovery struct {
 	refreshInterval int
 	logger          log.Logger
+	filters         []*rds.Filter
 }
 
 func newDiscovery(conf sdConfig, logger log.Logger) (*discovery, error) {
@@ -41,6 +42,7 @@ func newDiscovery(conf sdConfig, logger log.Logger) (*discovery, error) {
 	d := &discovery{
 		logger:          logger,
 		refreshInterval: conf.RefreshInterval,
+		filters:         conf.Filters,
 	}
 
 	return d, nil
@@ -53,7 +55,9 @@ func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 		sess := session.Must(session.NewSession())
 		client := rds.New(sess)
 
-		input := &rds.DescribeDBInstancesInput{}
+		input := &rds.DescribeDBInstancesInput{
+			Filters: d.filters,
+		}
 
 		if err := client.DescribeDBInstancesPagesWithContext(ctx, input, func(out *rds.DescribeDBInstancesOutput, lastPage bool) bool {
 			for _, dbi := range out.DBInstances {
@@ -96,6 +100,7 @@ func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 			return true
 		}); err != nil {
 			level.Error(d.logger).Log("msg", "could not describe db instance", "err", err)
+			time.Sleep(time.Duration(d.refreshInterval) * time.Second)
 			continue
 		}
 
