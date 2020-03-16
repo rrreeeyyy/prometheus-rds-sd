@@ -14,6 +14,18 @@ ex.) Generate mysql-compatible RDSs `file_sd` with filter.
 ./prometheus-rds-sd --output.file=/path/to/rds_sd.json --filters=Name=engine,Values=aurora-mysql,aurora,mysql
 ```
 
+## Install
+
+### Precompiled binaries
+
+Download from https://github.com/rrreeeyyy/prometheus-rds-sd/releases
+
+### Docker
+
+```
+docker pull rrreeeyyy/prometheus-rds-sd
+```
+
 ## Metadata
 
 The following meta labels are available on targets during relabeling:
