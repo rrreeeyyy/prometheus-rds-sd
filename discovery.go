@@ -20,6 +20,7 @@ const (
 	rdsLabel              = model.MetaLabelPrefix + "rds_"
 	rdsLabelAZ            = rdsLabel + "availability_zone"
 	rdsLabelInstanceID    = rdsLabel + "instance_id"
+	rdsLabelResourceID    = rdsLabel + "resource_id"
 	rdsLabelInstanceState = rdsLabel + "instance_state"
 	rdsLabelInstanceType  = rdsLabel + "instance_type"
 	rdsLabelEngine        = rdsLabel + "engine"
@@ -65,6 +66,7 @@ func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 					rdsLabelInstanceID: model.LabelValue(*dbi.DBInstanceIdentifier),
 				}
 
+				labels[rdsLabelResourceID] = model.LabelValue(*dbi.DbiResourceId)
 				labels[rdsLabelAZ] = model.LabelValue(*dbi.AvailabilityZone)
 				labels[rdsLabelInstanceState] = model.LabelValue(*dbi.DBInstanceStatus)
 				labels[rdsLabelInstanceType] = model.LabelValue(*dbi.DBInstanceClass)
