@@ -17,16 +17,18 @@ import (
 )
 
 const (
-	rdsLabel              = model.MetaLabelPrefix + "rds_"
-	rdsLabelAZ            = rdsLabel + "availability_zone"
-	rdsLabelInstanceID    = rdsLabel + "instance_id"
-	rdsLabelResourceID    = rdsLabel + "resource_id"
-	rdsLabelInstanceState = rdsLabel + "instance_state"
-	rdsLabelInstanceType  = rdsLabel + "instance_type"
-	rdsLabelEngine        = rdsLabel + "engine"
-	rdsLabelEngineVersion = rdsLabel + "engine_version"
-	rdsLabelTag           = rdsLabel + "tag_"
-	rdsLabelVPCID         = rdsLabel + "vpc_id"
+	rdsLabel                = model.MetaLabelPrefix + "rds_"
+	rdsLabelAZ              = rdsLabel + "availability_zone"
+	rdsLabelInstanceID      = rdsLabel + "instance_id"
+	rdsLabelResourceID      = rdsLabel + "resource_id"
+	rdsLabelInstanceState   = rdsLabel + "instance_state"
+	rdsLabelInstanceType    = rdsLabel + "instance_type"
+	rdsLabelEngine          = rdsLabel + "engine"
+	rdsLabelEngineVersion   = rdsLabel + "engine_version"
+	rdsLabelTag             = rdsLabel + "tag_"
+	rdsLabelVPCID           = rdsLabel + "vpc_id"
+	rdsLabelEndpointAddress = rdsLabel + "endpoint_address"
+	rdsLabelEndpointPort    = rdsLabel + "endpoint_port"
 )
 
 type discovery struct {
@@ -78,6 +80,9 @@ func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 				labels[rdsLabelEngineVersion] = model.LabelValue(*dbi.EngineVersion)
 
 				labels[rdsLabelVPCID] = model.LabelValue(*dbi.DBSubnetGroup.VpcId)
+
+				labels[rdsLabelEndpointAddress] = model.LabelValue(*dbi.Endpoint.Address)
+				labels[rdsLabelEndpointPort] = model.LabelValue(*dbi.Endpoint.Port)
 
 				tags, err := listTagsForInstance(client, dbi)
 				if err != nil {
