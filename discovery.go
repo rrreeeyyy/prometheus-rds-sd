@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"net"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/go-kit/kit/log"
@@ -52,11 +54,21 @@ func newDiscovery(conf sdConfig, logger log.Logger) (*discovery, error) {
 }
 
 func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
+	var region string
+	for region == "" {
+		var err error
+		region, err = getDefaultRegion()
+		if err != nil {
+			level.Error(d.logger).Log("msg", "could not get default region", "err", err)
+			time.Sleep(time.Duration(d.refreshInterval) * time.Second)
+			continue
+		}
+	}
 	for c := time.Tick(time.Duration(d.refreshInterval) * time.Second); ; {
 		var tgs []*targetgroup.Group
 
 		sess := session.Must(session.NewSession())
-		client := rds.New(sess)
+		client := rds.New(sess, &aws.Config{Region: aws.String(region)})
 
 		input := &rds.DescribeDBInstancesInput{
 			Filters: d.filters,
@@ -64,6 +76,10 @@ func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 
 		if err := client.DescribeDBInstancesPagesWithContext(ctx, input, func(out *rds.DescribeDBInstancesOutput, lastPage bool) bool {
 			for _, dbi := range out.DBInstances {
+				if dbi.Endpoint == nil || dbi.Endpoint.Address == nil || dbi.Endpoint.Port == nil {
+					continue // instance is not ready
+				}
+
 				labels := model.LabelSet{
 					rdsLabelInstanceID: model.LabelValue(*dbi.DBInstanceIdentifier),
 				}
@@ -82,11 +98,12 @@ func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 				labels[rdsLabelVPCID] = model.LabelValue(*dbi.DBSubnetGroup.VpcId)
 
 				labels[rdsLabelEndpointAddress] = model.LabelValue(*dbi.Endpoint.Address)
-				labels[rdsLabelEndpointPort] = model.LabelValue(*dbi.Endpoint.Port)
+				labels[rdsLabelEndpointPort] = model.LabelValue(strconv.FormatInt(*dbi.Endpoint.Port, 10))
 
 				tags, err := listTagsForInstance(client, dbi)
 				if err != nil {
 					level.Error(d.logger).Log("msg", "could not list tags for db instance", "err", err)
+					continue
 				}
 
 				for _, t := range tags.TagList {
@@ -104,7 +121,7 @@ func (d *discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 					Labels:  labels,
 				})
 			}
-			return true
+			return !lastPage
 		}); err != nil {
 			level.Error(d.logger).Log("msg", "could not describe db instance", "err", err)
 			time.Sleep(time.Duration(d.refreshInterval) * time.Second)
@@ -127,4 +144,27 @@ func listTagsForInstance(client *rds.RDS, dbi *rds.DBInstance) (*rds.ListTagsFor
 		ResourceName: aws.String(*dbi.DBInstanceArn),
 	}
 	return client.ListTagsForResource(input)
+}
+
+func getDefaultRegion() (string, error) {
+	var region string
+
+	sess := session.Must(session.NewSession())
+	metadata := ec2metadata.New(sess, &aws.Config{
+		MaxRetries: aws.Int(0),
+	})
+	if metadata.Available() {
+		var err error
+		region, err = metadata.Region()
+		if err != nil {
+			return "", err
+		}
+	} else {
+		region = os.Getenv("AWS_REGION")
+		if region == "" {
+			region = "us-east-1"
+		}
+	}
+
+	return region, nil
 }
